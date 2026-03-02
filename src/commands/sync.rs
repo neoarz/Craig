@@ -1,5 +1,3 @@
-use std::env;
-
 use poise::serenity_prelude as serenity;
 
 use crate::helpers::{ensure_owner, send_ephemeral};
@@ -14,15 +12,9 @@ enum SyncScope {
 }
 
 async fn require_dev_guild_id(ctx: Context<'_>) -> Result<Option<serenity::GuildId>, Error> {
-    match env::var("DEV_GUILD_ID") {
-        Ok(raw_id) => match raw_id.parse::<u64>() {
-            Ok(parsed_id) => Ok(Some(serenity::GuildId::new(parsed_id))),
-            Err(_) => {
-                send_ephemeral(ctx, "DEV_GUILD_ID is invalid.").await?;
-                Ok(None)
-            }
-        },
-        Err(_) => {
+    match ctx.data().dev_guild_id {
+        Some(guild_id) => Ok(Some(guild_id)),
+        None => {
             send_ephemeral(ctx, "DEV_GUILD_ID is missing.").await?;
             Ok(None)
         }

@@ -12,8 +12,12 @@ const INTENTS: GatewayIntents =
     GatewayIntents::non_privileged().union(serenity::GatewayIntents::MESSAGE_CONTENT);
 
 pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Error> {
-    let dev_guild_id = config.dev_guild_id;
-    let prefix = config.prefix.clone();
+    let AppConfig {
+        token,
+        prefix,
+        dev_guild_id,
+        ..
+    } = config;
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -24,11 +28,7 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
                 ))),
                 ..Default::default()
             },
-            commands: vec![
-                ping(),
-                sync_commands::sync(),
-                sync_commands::unsync(),
-            ],
+            commands: vec![ping(), sync_commands::sync(), sync_commands::unsync()],
             post_command: |ctx| {
                 Box::pin(async move {
                     let command_name = format!("{}{}", ctx.prefix(), ctx.invoked_command_name());
@@ -59,21 +59,14 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
                 )
                 .await?;
 
-                crate::bot_info!(
-                    "Logged in as {} (ID: {})",
-                    ready.user.tag(),
-                    ready.user.id
-                );
+                crate::bot_info!("Logged in as {} (ID: {})", ready.user.tag(), ready.user.id);
 
                 match dev_guild_id.to_partial_guild(&ctx.http).await {
-                    Ok(guild) => crate::bot_info!(
-                        "Dev Guild: {} (ID: {})",
-                        guild.name,
-                        guild.id
-                    ),
+                    Ok(guild) => crate::bot_info!("Dev Guild: {} (ID: {})", guild.name, guild.id),
                     Err(error) => crate::bot_warn!(
                         "Could not use dev guild {} for startup logging: {}",
-                        dev_guild_id, error
+                        dev_guild_id,
+                        error
                     ),
                 }
                 // Most people dont use team but printing in case someone does (this shouldnt show if the bot is not in a team)
@@ -83,10 +76,9 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
                             crate::bot_info!("Team: {}", team.name);
                         }
                     }
-                    Err(error) => crate::bot_warn!(
-                        "Could not fetch application/team info: {}",
-                        error
-                    ),
+                    Err(error) => {
+                        crate::bot_warn!("Could not fetch application/team info: {}", error)
+                    }
                 }
 
                 crate::bot_info!("Commands: {}", framework.options().commands.len());
@@ -95,7 +87,7 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
         })
         .build();
 
-    let mut client = serenity::ClientBuilder::new(config.token, INTENTS)
+    let mut client = serenity::ClientBuilder::new(token, INTENTS)
         .framework(framework)
         .await?;
 

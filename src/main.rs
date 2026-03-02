@@ -1,3 +1,4 @@
+use poise::serenity_prelude::GuildId;
 use sqlx::PgPool;
 
 mod bot;
@@ -12,6 +13,7 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
 pub struct Data {
     pub db: PgPool,
+    pub dev_guild_id: Option<GuildId>,
 }
 
 #[tokio::main]
@@ -27,6 +29,9 @@ async fn main() {
 async fn run() -> Result<(), Error> {
     let config = config::AppConfig::from_env()?;
     let db = db::connect_and_migrate(&config.database_url).await?;
-    let data = Data { db: db.clone() };
+    let data = Data {
+        db: db.clone(),
+        dev_guild_id: config.dev_guild_id,
+    };
     bot::start(config, data, db).await
 }
