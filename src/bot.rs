@@ -71,9 +71,10 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
 
 fn spawn_shutdown_handler(shard_manager: Arc<serenity::ShardManager>, db: PgPool) {
     tokio::spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Cannot register a ctrl+c handler!");
+        if let Err(error) = tokio::signal::ctrl_c().await {
+            tracing::error!("Cannot register ctrl+c handler: {error}");
+            return;
+        }
 
         tracing::info!("Shutting down the bot");
         shard_manager.shutdown_all().await;
