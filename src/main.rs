@@ -4,6 +4,7 @@ mod bot;
 mod commands;
 mod config;
 mod db;
+mod helpers;
 mod logging;
 
 pub type Context<'a> = poise::Context<'a, Data, Error>;

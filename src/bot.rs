@@ -5,7 +5,7 @@ use serenity::GatewayIntents;
 use sqlx::PgPool;
 use tracing::{info, warn};
 
-use crate::commands::{help::help, ping::pong};
+use crate::commands::{help::help, ping::pong, sync as sync_commands};
 use crate::config::AppConfig;
 use crate::{Data, Error};
 
@@ -25,7 +25,12 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
                 ))),
                 ..Default::default()
             },
-            commands: vec![help(), pong()],
+            commands: vec![
+                help(),
+                pong(),
+                sync_commands::sync(),
+                sync_commands::unsync(),
+            ],
             ..Default::default()
         })
         .setup(move |ctx, ready, framework| {
