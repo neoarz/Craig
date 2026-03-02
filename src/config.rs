@@ -4,7 +4,6 @@ use std::env::VarError;
 use dotenvy::dotenv;
 use poise::Prefix;
 use poise::serenity_prelude::GuildId;
-use tracing::warn;
 
 use crate::Error;
 
@@ -40,33 +39,8 @@ impl AppConfig {
 fn load_dotenv() -> Result<(), Error> {
     match dotenv() {
         Ok(_) => Ok(()),
-        Err(err) if err.not_found() => {
-            if !dotenv_warning_disabled()? {
-                warn!(
-                    "You have not included a .env file! If this is intentional you can disable this warning with `DISABLE_NO_DOTENV_WARNING=1`"
-                );
-            }
-            Ok(())
-        }
+        Err(err) if err.not_found() => Err(".env file is required".into()),
         Err(err) => Err(format!("Dotenv error: {err}").into()),
-    }
-}
-
-fn dotenv_warning_disabled() -> Result<bool, Error> {
-    match env::var("DISABLE_NO_DOTENV_WARNING")
-        .map(|x| x.to_ascii_lowercase())
-        .as_deref()
-    {
-        Ok("1" | "true") => Ok(true),
-        Ok("0" | "false") => Ok(false),
-        Ok(_) => Err(
-            "DISABLE_NO_DOTENV_WARNING environment variable is not a valid value (1/0/true/false)"
-                .into(),
-        ),
-        Err(VarError::NotPresent) => Ok(false),
-        Err(VarError::NotUnicode(_)) => {
-            Err("DISABLE_NO_DOTENV_WARNING environment variable is not valid Unicode".into())
-        }
     }
 }
 
