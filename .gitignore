@@ -1,0 +1,6 @@
+# Configuration
+.vscode
+.env
+
+# Build Files
+/target
