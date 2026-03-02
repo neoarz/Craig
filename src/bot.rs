@@ -3,6 +3,7 @@ use std::sync::Arc;
 use poise::serenity_prelude as serenity;
 use serenity::GatewayIntents;
 use sqlx::PgPool;
+use tracing::{info, warn};
 
 use crate::commands::{help::help, ping::pong};
 use crate::config::AppConfig;
@@ -12,6 +13,8 @@ const INTENTS: GatewayIntents =
     GatewayIntents::non_privileged().union(serenity::GatewayIntents::MESSAGE_CONTENT);
 
 pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Error> {
+    let dev_guild_id = config.dev_guild_id;
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
@@ -25,9 +28,32 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
             commands: vec![help(), pong()],
             ..Default::default()
         })
-        .setup(move |ctx, _ready, framework| {
+        .setup(move |ctx, ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+
+                info!("Logged in as {} (ID: {})", ready.user.tag(), ready.user.id);
+
+                if let Some(guild_id) = dev_guild_id {
+                    match guild_id.to_partial_guild(&ctx.http).await {
+                        Ok(guild) => info!("Dev Guild: {} (ID: {})", guild.name, guild.id),
+                        Err(error) => warn!(
+                            "Could not resolve dev guild {} for startup logging: {}",
+                            guild_id, error
+                        ),
+                    }
+                }
+                // Most people dont use team but printing in case someone does (this shouldnt show if the bot is not in a team)
+                match ctx.http.get_current_application_info().await {
+                    Ok(application) => {
+                        if let Some(team) = application.team {
+                            info!("Team: {}", team.name);
+                        }
+                    }
+                    Err(error) => warn!("Could not fetch application/team info: {}", error),
+                }
+
+                info!("Commands: {}", framework.options().commands.len());
                 Ok(data)
             })
         })
@@ -39,7 +65,6 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
 
     spawn_shutdown_handler(client.shard_manager.clone(), db);
 
-    tracing::info!("Starting the bot");
     client.start().await?;
     Ok(())
 }
