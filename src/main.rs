@@ -19,7 +19,7 @@ async fn main() {
     logging::init();
 
     if let Err(error) = run().await {
-        tracing::error!("Fatal error: {error}");
+        crate::app_error!("{error}");
         std::process::exit(1);
     }
 }

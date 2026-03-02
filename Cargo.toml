@@ -11,7 +11,6 @@ tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "signal"]
 dotenvy = "0.15.7"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
-regex = "1.12.2"
 
 [dependencies.sqlx]
 version = "0.8.6"
