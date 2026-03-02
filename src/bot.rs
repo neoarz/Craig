@@ -35,18 +35,23 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
         })
         .setup(move |ctx, ready, framework| {
             Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                let dev_guild_id =
+                    dev_guild_id.ok_or("DEV_GUILD_ID isnt found, where it at buddy")?;
+                poise::builtins::register_in_guild(
+                    ctx,
+                    &framework.options().commands,
+                    dev_guild_id,
+                )
+                .await?;
 
                 info!("Logged in as {} (ID: {})", ready.user.tag(), ready.user.id);
 
-                if let Some(guild_id) = dev_guild_id {
-                    match guild_id.to_partial_guild(&ctx.http).await {
-                        Ok(guild) => info!("Dev Guild: {} (ID: {})", guild.name, guild.id),
-                        Err(error) => warn!(
-                            "Could not resolve dev guild {} for startup logging: {}",
-                            guild_id, error
-                        ),
-                    }
+                match dev_guild_id.to_partial_guild(&ctx.http).await {
+                    Ok(guild) => info!("Dev Guild: {} (ID: {})", guild.name, guild.id),
+                    Err(error) => warn!(
+                        "Could not use dev guild {} for startup logging: {}",
+                        dev_guild_id, error
+                    ),
                 }
                 // Most people dont use team but printing in case someone does (this shouldnt show if the bot is not in a team)
                 match ctx.http.get_current_application_info().await {
