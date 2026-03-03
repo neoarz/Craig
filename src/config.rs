@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 
 use dotenvy::dotenv;
@@ -14,6 +15,7 @@ pub struct AppConfig {
     pub database_url: String,
     pub prefix: String,
     pub dev_guild_id: GuildId,
+    pub allowed_guilds: HashSet<GuildId>,
     pub ai: AiConfig,
 }
 
@@ -33,6 +35,11 @@ pub enum ConfigError {
     PrefixContainsWhitespace,
     #[error("DEV_GUILD_ID must be a valid u64 snowflake id")]
     InvalidDevGuildId(#[source] std::num::ParseIntError),
+    #[error("ALLOWED_GUILD_IDS contains invalid id '{raw}'")]
+    InvalidAllowedGuildId {
+        raw: String,
+        source: std::num::ParseIntError,
+    },
 }
 
 impl AppConfig {
@@ -43,6 +50,7 @@ impl AppConfig {
         let database_url = required_env("DATABASE_URL")?;
         let prefix = parse_prefix()?;
         let dev_guild_id = parse_dev_guild_id()?;
+        let allowed_guilds = parse_allowed_guilds()?;
         let ai = parse_ai_config()?;
 
         Ok(Self {
@@ -50,6 +58,7 @@ impl AppConfig {
             database_url,
             prefix,
             dev_guild_id,
+            allowed_guilds,
             ai,
         })
     }
@@ -90,6 +99,22 @@ fn parse_dev_guild_id() -> Result<GuildId, ConfigError> {
     let parsed = raw.parse::<u64>().map_err(ConfigError::InvalidDevGuildId)?;
 
     Ok(GuildId::new(parsed))
+}
+
+fn parse_allowed_guilds() -> Result<HashSet<GuildId>, ConfigError> {
+    let raw = required_env("ALLOWED_GUILD_IDS")?;
+    raw.split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| {
+            s.parse::<u64>().map(GuildId::new).map_err(|source| {
+                ConfigError::InvalidAllowedGuildId {
+                    raw: s.to_string(),
+                    source,
+                }
+            })
+        })
+        .collect()
 }
 
 fn parse_ai_config() -> Result<AiConfig, ConfigError> {

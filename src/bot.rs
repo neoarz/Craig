@@ -4,6 +4,7 @@ use sqlx::PgPool;
 
 use crate::commands::{ai::ai, ping::ping, sync as sync_commands};
 use crate::config::AppConfig;
+use crate::helpers;
 use crate::services::{chat, dispatch};
 use crate::{Data, Error};
 
@@ -29,6 +30,7 @@ pub async fn start(config: AppConfig, data: Data) -> Result<(), Error> {
                 ..Default::default()
             },
             allowed_mentions: Some(chat::no_ping_allowed_mentions()),
+            command_check: Some(|ctx| Box::pin(helpers::ensure_guild_allowed(ctx))),
             commands: vec![ai(), ping(), sync_commands::sync(), sync_commands::unsync()],
             post_command: |ctx| Box::pin(log_command(ctx)),
             ..Default::default()

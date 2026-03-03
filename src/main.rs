@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use poise::serenity_prelude::GuildId;
 use sqlx::PgPool;
 
@@ -16,6 +18,7 @@ pub type Error = error::AppError;
 pub struct Data {
     pub db: PgPool,
     pub dev_guild_id: GuildId,
+    pub allowed_guilds: HashSet<GuildId>,
     pub ai: services::ai::AiService,
 }
 
@@ -36,6 +39,7 @@ async fn run() -> Result<(), Error> {
     let data = Data {
         db: db.clone(),
         dev_guild_id: config.dev_guild_id,
+        allowed_guilds: config.allowed_guilds.clone(),
         ai,
     };
     bot::start(config, data).await

@@ -4,6 +4,7 @@ use std::time::Instant;
 use poise::serenity_prelude as serenity;
 
 use crate::db;
+use crate::helpers;
 use crate::services::chat::{self, ChatSource};
 use crate::services::chat_log;
 use crate::{Data, Error};
@@ -40,6 +41,17 @@ pub fn on_error(error: poise::FrameworkError<'_, Data, Error>) -> poise::BoxFutu
                         return;
                     }
                 };
+
+                if let Some(guild_id) = msg.guild_id
+                    && !framework.user_data.allowed_guilds.contains(&guild_id)
+                {
+                    if let Err(error) =
+                        chat::reply_to_message(&ctx.http, msg, helpers::UNAUTHORIZED_REPLY).await
+                    {
+                        crate::app_error!("Failed to send unauthorized reply: {error}");
+                    }
+                    return;
+                }
 
                 handle_ai_chat(
                     &ctx.http,
@@ -96,6 +108,17 @@ pub fn on_event<'a>(
             Some(prompt) => prompt,
             None => return Ok(()),
         };
+
+        if let Some(guild_id) = new_message.guild_id
+            && !framework.user_data.allowed_guilds.contains(&guild_id)
+        {
+            if let Err(error) =
+                chat::reply_to_message(&ctx.http, new_message, helpers::UNAUTHORIZED_REPLY).await
+            {
+                crate::app_error!("Failed to send unauthorized reply: {error}");
+            }
+            return Ok(());
+        }
 
         handle_ai_chat(
             &ctx.http,
