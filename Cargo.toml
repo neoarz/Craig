@@ -7,10 +7,18 @@ edition = "2024"
 
 [dependencies]
 poise = "0.6.1"
-tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1.49.0", features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+] }
 dotenvy = "0.15.7"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+async-openai = { version = "0.33.0", features = ["chat-completion"] }
+reqwest = { version = "0.12.28", default-features = false, features = [
+    "rustls-tls",
+] }
 
 [dependencies.sqlx]
 version = "0.8.6"

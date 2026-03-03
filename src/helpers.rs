@@ -21,6 +21,6 @@ pub(crate) async fn ensure_owner(ctx: Context<'_>) -> Result<bool, Error> {
         return Ok(true);
     }
 
-    send_ephemeral(ctx, "Only the bot owner can use this command noob").await?;
+    send_ephemeral(ctx, "Only the bot owner can use this command.").await?;
     Ok(false)
 }

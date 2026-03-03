@@ -11,16 +11,6 @@ enum SyncScope {
     Global,
 }
 
-async fn require_dev_guild_id(ctx: Context<'_>) -> Result<Option<serenity::GuildId>, Error> {
-    match ctx.data().dev_guild_id {
-        Some(guild_id) => Ok(Some(guild_id)),
-        None => {
-            send_ephemeral(ctx, "DEV_GUILD_ID is missing.").await?;
-            Ok(None)
-        }
-    }
-}
-
 /// Sync slash commands to guild or globally.
 #[poise::command(slash_command)]
 pub async fn sync(
@@ -36,10 +26,7 @@ pub async fn sync(
 
     match scope {
         SyncScope::Guild => {
-            let guild_id = match require_dev_guild_id(ctx).await? {
-                Some(guild_id) => guild_id,
-                None => return Ok(()),
-            };
+            let guild_id = dev_guild_id(ctx);
             poise::builtins::register_in_guild(ctx, commands, guild_id).await?;
             send_ephemeral(
                 ctx,
@@ -71,10 +58,7 @@ pub async fn unsync(
 
     match scope {
         SyncScope::Guild => {
-            let guild_id = match require_dev_guild_id(ctx).await? {
-                Some(guild_id) => guild_id,
-                None => return Ok(()),
-            };
+            let guild_id = dev_guild_id(ctx);
             guild_id
                 .set_commands(ctx, Vec::<serenity::CreateCommand>::new())
                 .await?;
@@ -95,4 +79,8 @@ pub async fn unsync(
     }
 
     Ok(())
+}
+
+fn dev_guild_id(ctx: Context<'_>) -> serenity::GuildId {
+    ctx.data().dev_guild_id
 }

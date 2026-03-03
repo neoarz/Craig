@@ -3,7 +3,7 @@ use poise::CreateReply;
 use crate::{Context, Error};
 
 /// Ping!
-#[poise::command(slash_command, prefix_command, track_edits)]
+#[poise::command(slash_command)]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     let gateway_ping = ctx.ping().await;
 
