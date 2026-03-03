@@ -1,5 +1,5 @@
-use std::time::Instant;
 use std::sync::Arc;
+use std::time::Instant;
 
 use poise::serenity_prelude as serenity;
 
