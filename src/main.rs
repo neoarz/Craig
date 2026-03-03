@@ -38,5 +38,5 @@ async fn run() -> Result<(), Error> {
         dev_guild_id: config.dev_guild_id,
         ai,
     };
-    bot::start(config, data, db).await
+    bot::start(config, data).await
 }

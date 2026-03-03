@@ -10,13 +10,14 @@ use crate::{Data, Error};
 const INTENTS: GatewayIntents =
     GatewayIntents::non_privileged().union(serenity::GatewayIntents::MESSAGE_CONTENT);
 
-pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Error> {
+pub async fn start(config: AppConfig, data: Data) -> Result<(), Error> {
     let AppConfig {
         token,
         prefix,
         dev_guild_id,
         ..
     } = config;
+    let db = data.db.clone();
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {

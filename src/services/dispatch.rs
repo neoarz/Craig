@@ -3,7 +3,9 @@ use std::time::Instant;
 
 use poise::serenity_prelude as serenity;
 
+use crate::db;
 use crate::services::chat::{self, ChatSource};
+use crate::services::chat_log::ChatLogMeta;
 use crate::{Data, Error};
 
 pub fn on_error(error: poise::FrameworkError<'_, Data, Error>) -> poise::BoxFuture<'_, ()> {
@@ -127,27 +129,51 @@ async fn handle_ai_chat(
 ) {
     let started = Instant::now();
     let _typing = msg.channel_id.start_typing(http);
+    let source_name = source.as_str();
+    let log_meta = ChatLogMeta::from_message(msg, source_name);
+    let user_id = msg.author.id.get();
+    let username = msg.author.name.clone();
 
     match chat::generate_reply(data, prompt, None).await {
         Ok(reply) => {
-            if let Err(error) = chat::reply_to_message(http.as_ref(), msg, &reply.content).await {
-                crate::app_error!("Failed to send {} AI reply: {error}", source.as_str());
-                return;
+            match chat::reply_to_message(http.as_ref(), msg, &reply.content).await {
+                Ok(()) => {
+                    if let Some(meta) = log_meta.as_ref() {
+                        let chat_log =
+                            meta.success(&reply.model_id, prompt, &reply.content, started);
+                        db::insert_chat_log(&data.db, &chat_log).await;
+                    }
+                }
+                Err(error) => {
+                    crate::app_error!("Failed to send {} AI reply: {error}", source_name);
+                    if let Some(meta) = log_meta.as_ref() {
+                        let chat_log = meta.failure(
+                            &reply.model_id,
+                            prompt,
+                            &reply.content,
+                            error.to_string(),
+                            started,
+                        );
+                        db::insert_chat_log(&data.db, &chat_log).await;
+                    }
+                    return;
+                }
             }
 
             let location = format_location(msg.guild_id, msg.channel_id);
             crate::run_debug!(
                 "Executed AI chat [{}] in {} by {} (ID: {}) using (Model: {}) in {}ms",
-                source.as_str(),
+                source_name,
                 location,
-                msg.author.name,
-                msg.author.id.get(),
+                username,
+                user_id,
                 reply.model_id,
                 started.elapsed().as_millis()
             );
         }
         Err(error) => {
-            crate::app_error!("AI {} chat failed: {error}", source.as_str());
+            let mut error_text = error.to_string();
+            crate::app_error!("AI {} chat failed: {error_text}", source_name);
             if let Err(send_error) = chat::reply_to_message(
                 http.as_ref(),
                 msg,
@@ -157,8 +183,15 @@ async fn handle_ai_chat(
             {
                 crate::app_error!(
                     "Failed to send fallback error for {} chat: {send_error}",
-                    source.as_str()
+                    source_name
                 );
+                error_text = format!("{error_text}; fallback_send_failed: {send_error}");
+            }
+
+            if let Some(meta) = log_meta.as_ref() {
+                let chat_log =
+                    meta.failure(&data.ai.default_model, prompt, "", error_text, started);
+                db::insert_chat_log(&data.db, &chat_log).await;
             }
         }
     }
