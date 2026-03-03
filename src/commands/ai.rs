@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use crate::db;
 use crate::services::chat::{self, ChatSource};
-use crate::services::chat_log::ChatLogMeta;
+use crate::services::chat_log;
 use crate::{Context, Error};
 
 #[derive(Debug, Clone, Copy, poise::ChoiceParameter)]
@@ -46,11 +46,7 @@ pub async fn ai(
 ) -> Result<(), Error> {
     ctx.defer().await?;
     let started = Instant::now();
-    let source = ChatSource::SlashCommand.as_str();
-    let db = ctx.data().db.clone();
-    let log_meta = ChatLogMeta::from_context(&ctx, source);
-    let user_id = ctx.author().id.get();
-    let username = ctx.author().name.clone();
+    let source = ChatSource::SlashCommand;
     let selected_model = model
         .map(AiModel::model_id)
         .unwrap_or(ctx.data().ai.default_model.as_str())
@@ -59,42 +55,53 @@ pub async fn ai(
     let reply = match chat::generate_reply(ctx.data(), &prompt, Some(&selected_model)).await {
         Ok(reply) => reply,
         Err(error) => {
-            if let Some(meta) = log_meta.as_ref() {
-                let chat_log =
-                    meta.failure(&selected_model, &prompt, "", error.to_string(), started);
-                db::insert_chat_log(&db, &chat_log).await;
-            }
+            let log = chat_log::from_slash_context(
+                &ctx,
+                source,
+                &selected_model,
+                &prompt,
+                "",
+                started,
+                Some(error.to_string()),
+            );
+            db::insert_chat_log(&ctx.data().db, &log).await;
             return Err(error);
         }
     };
 
-    match chat::reply_to_context(ctx, &reply.content).await {
-        Ok(()) => {
-            if let Some(meta) = log_meta.as_ref() {
-                let chat_log = meta.success(&reply.model_id, &prompt, &reply.content, started);
-                db::insert_chat_log(&db, &chat_log).await;
-            }
-        }
+    let error_text = match chat::reply_to_context(ctx, &reply.content).await {
+        Ok(()) => None,
         Err(error) => {
-            if let Some(meta) = log_meta.as_ref() {
-                let chat_log = meta.failure(
-                    &reply.model_id,
-                    &prompt,
-                    &reply.content,
-                    error.to_string(),
-                    started,
-                );
-                db::insert_chat_log(&db, &chat_log).await;
-            }
+            let log = chat_log::from_slash_context(
+                &ctx,
+                source,
+                &reply.model_id,
+                &prompt,
+                &reply.content,
+                started,
+                Some(error.to_string()),
+            );
+            db::insert_chat_log(&ctx.data().db, &log).await;
             return Err(error);
         }
-    }
+    };
+
+    let log = chat_log::from_slash_context(
+        &ctx,
+        source,
+        &reply.model_id,
+        &prompt,
+        &reply.content,
+        started,
+        error_text,
+    );
+    db::insert_chat_log(&ctx.data().db, &log).await;
 
     crate::run_debug!(
-        "Executed AI chat [{}] in slash command by {} (ID: {}) using model {}",
-        source,
-        username,
-        user_id,
+        "Executed AI chat [{}] in slash command by {} (ID: {}) using (Model: {})",
+        source.as_str(),
+        ctx.author().name,
+        ctx.author().id.get(),
         reply.model_id
     );
 
