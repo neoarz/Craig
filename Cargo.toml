@@ -19,6 +19,7 @@ async-openai = { version = "0.33.0", features = ["chat-completion"] }
 reqwest = { version = "0.12.28", default-features = false, features = [
     "rustls-tls",
 ] }
+thiserror = "2.0.18"
 
 [dependencies.sqlx]
 version = "0.8.6"

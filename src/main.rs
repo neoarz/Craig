@@ -5,12 +5,13 @@ mod bot;
 mod commands;
 mod config;
 mod db;
+mod error;
 mod helpers;
 mod logging;
 mod services;
 
 pub type Context<'a> = poise::Context<'a, Data, Error>;
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Error = error::AppError;
 
 pub struct Data {
     pub db: PgPool,

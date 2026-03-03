@@ -27,6 +27,14 @@ pub struct ChatReply {
     pub content: String,
 }
 
+pub fn no_ping_allowed_mentions() -> serenity::CreateAllowedMentions {
+    serenity::CreateAllowedMentions::new()
+        .all_users(false)
+        .all_roles(false)
+        .everyone(false)
+        .replied_user(false)
+}
+
 pub async fn generate_reply(
     data: &Data,
     prompt: &str,
@@ -42,7 +50,9 @@ pub async fn reply_to_context(ctx: Context<'_>, content: &str) -> Result<(), Err
     let chunks = split_for_discord(content);
 
     for (index, chunk) in chunks.into_iter().enumerate() {
-        let mut reply = CreateReply::default().content(chunk);
+        let mut reply = CreateReply::default()
+            .content(chunk)
+            .allowed_mentions(no_ping_allowed_mentions());
         if index == 0 {
             reply = reply.reply(true);
         }
@@ -60,7 +70,9 @@ pub async fn reply_to_message(
     let chunks = split_for_discord(content);
 
     for (index, chunk) in chunks.into_iter().enumerate() {
-        let mut builder = serenity::CreateMessage::new().content(chunk);
+        let mut builder = serenity::CreateMessage::new()
+            .content(chunk)
+            .allowed_mentions(no_ping_allowed_mentions());
         if index == 0 {
             builder = builder.reference_message(msg);
         }

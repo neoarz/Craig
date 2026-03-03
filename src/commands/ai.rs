@@ -39,7 +39,6 @@ pub async fn ai(
     ctx: Context<'_>,
     #[description = "Which AI model to use"] model: Option<AiModel>,
     #[description = "Your question or prompt"]
-    #[rest]
     prompt: String,
 ) -> Result<(), Error> {
     ctx.defer().await?;

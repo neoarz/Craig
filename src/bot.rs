@@ -4,7 +4,7 @@ use sqlx::PgPool;
 
 use crate::commands::{ai::ai, ping::ping, sync as sync_commands};
 use crate::config::AppConfig;
-use crate::services::dispatch;
+use crate::services::{chat, dispatch};
 use crate::{Data, Error};
 
 const INTENTS: GatewayIntents =
@@ -27,6 +27,7 @@ pub async fn start(config: AppConfig, data: Data, db: PgPool) -> Result<(), Erro
                 mention_as_prefix: false,
                 ..Default::default()
             },
+            allowed_mentions: Some(chat::no_ping_allowed_mentions()),
             commands: vec![ai(), ping(), sync_commands::sync(), sync_commands::unsync()],
             post_command: |ctx| Box::pin(log_command(ctx)),
             ..Default::default()

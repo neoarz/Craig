@@ -61,7 +61,7 @@ impl AiService {
             .choices
             .first()
             .and_then(|c| c.message.content.as_ref())
-            .ok_or("The AI model returned an empty response.")?;
+            .ok_or(Error::EmptyAiResponse)?;
 
         Ok(reply.clone())
     }
